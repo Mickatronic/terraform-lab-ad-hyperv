@@ -1,0 +1,23 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+*.auto.tfvars
+
+# Packer
+packer_cache/
+*.pkrvars.hcl
+!*.pkrvars.hcl.example
+
+# Images et ISO
+images/
+output-*/
+*.vhdx
+*.vhd
+*.iso
+
+# Plans Terraform (peuvent contenir des secrets)
+tfplan
+*.tfplan
