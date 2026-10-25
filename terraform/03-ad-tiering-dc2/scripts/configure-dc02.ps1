@@ -30,7 +30,8 @@ param(
     [string]$AdminUser = 'Administrateur'
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'LabHelpers.psm1') -Force
+# Chemin écrit sans Join-Path : LabHelpers doit être chargé avant tout autre module (voir son en-tête).
+Import-Module "$PSScriptRoot\LabHelpers.psm1" -Force
 
 if (-not $env:LAB_ADMIN_PASSWORD) { throw 'Variable d''environnement LAB_ADMIN_PASSWORD absente.' }
 $motDePasse = $env:LAB_ADMIN_PASSWORD
@@ -51,17 +52,53 @@ if ($role -lt 3) {
     Set-LabBaseConfig -VMName $VMName -Credential $credLocal -ComputerName $ComputerName `
         -IPAddress $IPAddress -PrefixLength $PrefixLength -DnsServers $PartnerIPAddress
 
+    # --- DC01 est-il joignable ? Profil réseau ---------------------------------------------
+    # Le switch interne n'a pas de passerelle : au démarrage, le service « Connaissance des
+    # emplacements réseau » (NlaSvc) de DC01 peut classer la carte en réseau PUBLIC au lieu de
+    # DOMAINE, et le pare-feu bloque alors les ports AD. Le redémarrer refait la détection.
+    Write-LabEtape "Vérification du profil réseau de DC01..."
+    Invoke-Command -VMName $PartnerVMName -Credential $credDomaine -ScriptBlock {
+        if (Get-NetConnectionProfile | Where-Object NetworkCategory -ne 'DomainAuthenticated') {
+            Restart-Service NlaSvc -Force
+            Start-Sleep -Seconds 20
+        }
+        Get-NetConnectionProfile | ForEach-Object { "$env:COMPUTERNAME : carte « $($_.InterfaceAlias) » en profil $($_.NetworkCategory)" }
+    } | ForEach-Object { Write-LabEtape $_ }
+
     Write-LabEtape "Jonction de $ComputerName au domaine $DomainName..."
-    Invoke-Command -VMName $VMName -Credential $credLocal -ArgumentList $DomainName, "$NetbiosName\$AdminUser", $motDePasse -ScriptBlock {
-        param($domaine, $user, $mdp)
+    Invoke-Command -VMName $VMName -Credential $credLocal -ArgumentList $DomainName, "$NetbiosName\$AdminUser", $motDePasse, $PartnerIPAddress -ScriptBlock {
+        param($domaine, $user, $mdp, $ipDC)
         $ErrorActionPreference = 'Stop'
-        # Petit test préalable : le DNS trouve-t-il un contrôleur de domaine ?
-        Resolve-DnsName "_ldap._tcp.dc._msdcs.$domaine" -Type SRV | Out-Null
         $cred = New-Object System.Management.Automation.PSCredential ($user, (ConvertTo-SecureString $mdp -AsPlainText -Force))
-        # Sans -OUPath, le compte ordinateur est créé dans le conteneur par défaut « Computers ».
-        # Ce n'est pas grave ici : la promotion le déplacera dans l'OU « Domain Controllers ».
-        Add-Computer -DomainName $domaine -Credential $cred -Force -WarningAction SilentlyContinue
-    }
+
+        # Juste après la création du domaine, DC01 peut mettre quelques minutes à être
+        # pleinement joignable (DNS, Netlogon, pare-feu) : on réessaie pendant 10 minutes.
+        $limite = (Get-Date).AddMinutes(10)
+        while ($true) {
+            try {
+                # Sans -OUPath, le compte ordinateur est créé dans le conteneur par défaut « Computers ».
+                # Ce n'est pas grave ici : la promotion le déplacera dans l'OU « Domain Controllers ».
+                Add-Computer -DomainName $domaine -Credential $cred -Force -WarningAction SilentlyContinue
+                "Jonction réussie."
+                break
+            }
+            catch {
+                # Diagnostic affiché dans la sortie de Terraform : ce que la jonction utilise réellement.
+                "Échec de la jonction : $($_.Exception.Message)"
+                $srv = Resolve-DnsName "_ldap._tcp.dc._msdcs.$domaine" -Type SRV -ErrorAction SilentlyContinue
+                "  DNS  : enregistrement SRV des DC $(if ($srv) { 'trouvé' } else { 'ABSENT' })"
+                # nltest /dsgetdc : la recherche de DC exactement comme la fait Windows (DNS + ping LDAP).
+                "  nltest /dsgetdc : " + ((nltest /dsgetdc:$domaine 2>&1 | Select-Object -First 2) -join ' | ')
+                foreach ($port in 53, 88, 135, 389, 445) {
+                    $ok = (Test-NetConnection $ipDC -Port $port -WarningAction SilentlyContinue).TcpTestSucceeded
+                    "  port $port vers $ipDC : $(if ($ok) { 'ouvert' } else { 'FERMÉ' })"
+                }
+                if ((Get-Date) -gt $limite) { throw "Jonction impossible après 10 minutes : voir le diagnostic ci-dessus." }
+                "  Nouvel essai dans 30 s..."
+                Start-Sleep -Seconds 30
+            }
+        }
+    } | ForEach-Object { Write-LabEtape $_ }
     # Après la jonction, LAB\Administrateur (membre des Admins du domaine) est administrateur local.
     Restart-LabVM -VMName $VMName -Credential $credLocal -CredentialAfter $credDomaine
     $role = 3
@@ -125,7 +162,7 @@ Invoke-Command -VMName $VMName -Credential $credDomaine -ScriptBlock {
     # On demande une réplication immédiate de toutes les partitions, dans les deux sens.
     # (/A toutes les partitions, /e tous les sites, /d noms complets, /P réplication « poussée »)
     repadmin /syncall /AdeP | Out-Null
-    Get-ADDomainController -Filter * | ForEach-Object { "DC : $($_.HostName)  GC=$($_.IsGlobalCatalog)  site=$($_.Site)" }
+    Get-ADDomainController -Filter * -Server localhost | ForEach-Object { "DC : $($_.HostName)  GC=$($_.IsGlobalCatalog)  site=$($_.Site)" }
     # Preuve que l'annuaire a été répliqué : les OU de tiering créées sur DC01 sont visibles ici.
     $ou = @(Get-ADOrganizationalUnit -Filter "Name -like 'Tier *'" -Server localhost).Count
     "OU 'Tier *' visibles sur $env:COMPUTERNAME : $ou"

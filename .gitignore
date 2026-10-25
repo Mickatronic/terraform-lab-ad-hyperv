@@ -21,3 +21,14 @@ output-*/
 # Plans Terraform (peuvent contenir des secrets)
 #tfplan
 #*.tfplan
+
+# Machines virtuelles Hyper-V (créées par Terraform dans vms\, jamais versionnées)
+vms/
+*.avhdx
+*.avhd
+*.vmcx
+*.vmrs
+*.VMRS
+*.vmgs
+*.vsv
+*.bin

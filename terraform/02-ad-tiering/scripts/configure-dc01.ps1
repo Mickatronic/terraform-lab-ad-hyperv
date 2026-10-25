@@ -28,7 +28,8 @@ param(
     [switch]$SkipTiering
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'LabHelpers.psm1') -Force
+# Chemin écrit sans Join-Path : LabHelpers doit être chargé avant tout autre module (voir son en-tête).
+Import-Module "$PSScriptRoot\LabHelpers.psm1" -Force
 
 if (-not $env:LAB_ADMIN_PASSWORD) { throw 'Variable d''environnement LAB_ADMIN_PASSWORD absente.' }
 $motDePasse = $env:LAB_ADMIN_PASSWORD

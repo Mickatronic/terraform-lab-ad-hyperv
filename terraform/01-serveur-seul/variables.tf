@@ -24,12 +24,6 @@ variable "vm_root_path" {
   default     = "C:\\VMS\\vms\\01-serveur-seul"
 }
 
-variable "lab_prefix" {
-  type        = string
-  description = "Préfixe des noms de VM dans Hyper-V (le nom Windows, lui, reste sans préfixe)"
-  default     = "L01"
-}
-
 variable "switch_name" {
   type    = string
   default = "L01-Internal"
@@ -57,19 +51,45 @@ variable "prefix_length" {
   default = 24
 }
 
-# --- Les VMs de cette variante ------------------------------------------------------
-# La clé de la map (SRV01) est le nom Windows de la machine.
+# --- La VM de cette variante ----------------------------------------------------------
+# Une seule VM : une variable par réglage, sans map ni boucle.
+# (La variante 03, avec deux VMs, montre la version « en boucle » avec for_each.)
 
-variable "vms" {
-  description = "Définition des VMs du LAB"
-  type = map(object({
-    cpus              = number
-    memory_startup_mb = number
-    memory_min_mb     = number
-    memory_max_mb     = number
-    ip                = string
-  }))
-  default = {
-    SRV01 = { cpus = 2, memory_startup_mb = 1024, memory_min_mb = 512, memory_max_mb = 2048, ip = "192.168.101.20" }
-  }
+variable "vm_name" {
+  type        = string
+  description = "Nom de la VM dans Hyper-V (préfixé pour ne pas entrer en collision avec les autres LABs)"
+  default     = "L01-SRV01"
+}
+
+variable "computer_name" {
+  type        = string
+  description = "Nom de l'ordinateur dans Windows (15 caractères maximum)"
+  default     = "SRV01"
+}
+
+variable "cpus" {
+  type    = number
+  default = 2
+}
+
+# Mémoire DYNAMIQUE (en Mo) : Hyper-V donne « startup » au démarrage, puis ajuste
+# entre « min » et « max » selon les besoins réels de la VM.
+variable "memory_startup_mb" {
+  type    = number
+  default = 1024
+}
+
+variable "memory_min_mb" {
+  type    = number
+  default = 512
+}
+
+variable "memory_max_mb" {
+  type    = number
+  default = 2048
+}
+
+variable "ip_address" {
+  type    = string
+  default = "192.168.101.20"
 }

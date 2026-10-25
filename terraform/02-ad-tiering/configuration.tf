@@ -12,7 +12,7 @@
 
 resource "terraform_data" "dc01" {
   triggers_replace = [
-    hyperv_machine_instance.vm["DC01"].id,
+    hyperv_machine_instance.vm.id,
     filesha1("${path.module}/scripts/configure-dc01.ps1"),
     filesha1("${path.module}/scripts/New-LabTiering.ps1"),
     filesha1("${path.module}/scripts/tiering-comptes.csv"),
@@ -20,18 +20,21 @@ resource "terraform_data" "dc01" {
   ]
 
   provisioner "local-exec" {
-    interpreter = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+    # -NonInteractive : si quelque chose demande une saisie (identifiants...), le script échoue
+    # avec un message d'erreur au lieu d'ouvrir une fenêtre et de bloquer Terraform.
+    interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
     command = join(" ", [
       "& '${abspath(path.module)}/scripts/configure-dc01.ps1'",
-      "-VMName '${local.vm_names["DC01"]}' -ComputerName 'DC01'",
-      "-IPAddress '${var.vms["DC01"].ip}' -PrefixLength ${var.prefix_length}",
+      "-VMName '${var.vm_name}' -ComputerName '${var.computer_name}'",
+      "-IPAddress '${var.ip_address}' -PrefixLength ${var.prefix_length}",
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",
     ])
 
-    # Le mot de passe passe par une variable d'environnement : il n'apparaît ni dans la
-    # ligne de commande ni dans la sortie de terraform (variable « sensitive »).
+    # Le mot de passe passe par une variable d'environnement : il n'apparaît pas dans la ligne
+    # de commande. nonsensitive() est nécessaire : avec une valeur « sensitive » dans environment,
+    # Terraform masque TOUTE la sortie du script (« output suppressed »), on ne verrait plus les étapes.
     environment = {
-      LAB_ADMIN_PASSWORD = var.admin_password
+      LAB_ADMIN_PASSWORD = nonsensitive(var.admin_password)
     }
   }
 }

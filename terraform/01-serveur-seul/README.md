@@ -15,6 +15,7 @@ Windows 11 (hôte)
 | Notion | Où la voir |
 |--------|-----------|
 | Séparer infrastructure et configuration | `main.tf` (Hyper-V) / `configuration.tf` (Windows) |
+| Ressources simples reliées par des références (pas de boucle) | `main.tf` |
 | Copier une image Packer « golden » en disque de VM | `hyperv_vhd.os` dans `main.tf` |
 | Mémoire dynamique Hyper-V | `hyperv_machine_instance.vm` dans `main.tf` |
 | Lancer un script après la création d'une VM | `terraform_data` + `local-exec` dans `configuration.tf` |
@@ -31,6 +32,7 @@ Windows 11 (hôte)
 ├── main.tf                   # switch + disque + VM
 ├── configuration.tf          # lance scripts/configure-serveur.ps1 après la création
 ├── outputs.tf                # ce qu'affiche Terraform à la fin
+├── moved.tf                  # transition depuis l'ancienne version (avec for_each), supprimable ensuite
 ├── terraform.tfvars          # VOS valeurs : compte de l'hôte (copie de terraform\terraform.tfvars)
 ├── terraform.tfvars.example
 ├── deploy.ps1                # init + validate + plan + apply (ou -Destroy)
@@ -100,11 +102,12 @@ Exit-PSSession
 | SRV01 | 2 | 1024 / 512 / 2048 Mo | 192.168.101.20 |
 
 L'hôte n'a qu'environ 2,4 Go de RAM libre : la mémoire dynamique permet à la VM de ne consommer
-que ce dont elle a besoin. Ces valeurs se changent dans `variables.tf` (variable `vms`).
+que ce dont elle a besoin. Ces valeurs se changent dans `variables.tf` (`memory_startup_mb`, `memory_min_mb`, `memory_max_mb`).
 
 ## Exercices possibles
 
-- Ajouter un deuxième serveur : une ligne dans la variable `vms` suffit (le `for_each` fait le reste).
+- Ajouter un deuxième serveur en copiant les ressources `hyperv_vhd` et `hyperv_machine_instance`, puis
+  comparer avec la variante 03, qui fait la même chose avec une boucle `for_each` sur une map de VMs.
 - Ajouter le rôle serveur de fichiers (`Install-WindowsFeature FS-FileServer`) dans `configure-serveur.ps1`.
 - Donner une IP à l'hôte sur le switch (`New-NetIPAddress` sur la carte `vEthernet (L01-Internal)`)
   pour joindre la VM par le réseau (ping, WinRM).

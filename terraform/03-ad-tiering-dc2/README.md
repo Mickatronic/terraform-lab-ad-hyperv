@@ -19,6 +19,7 @@ Windows 11 (hôte)
 
 | Notion | Où la voir |
 |--------|-----------|
+| Décrire plusieurs VMs avec une boucle (`for_each` sur la map `vms`) | `variables.tf`, `main.tf` |
 | Ordonner des étapes dépendantes (`depends_on`) | `configuration.tf` |
 | Jonction au domaine en PowerShell (`Add-Computer`) | `scripts/configure-dc02.ps1`, étape 2 |
 | Rôle du DNS pour trouver un DC (enregistrements SRV) | `configure-dc02.ps1`, étape 2 |

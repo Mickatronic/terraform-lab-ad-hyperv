@@ -33,6 +33,15 @@ param(
     [string]$CsvPath
 )
 $ErrorActionPreference = 'Stop'
+
+# Juste après la promotion, le DC répond déjà en local, mais il n'est pas encore « trouvable »
+# par le localisateur de DC (enregistrements DNS en cours, service Netlogon qui démarre).
+# Sans -Server, une cmdlet AD cherche un DC via ce localisateur et peut échouer avec
+# « Impossible de trouver un serveur par défaut avec les services Web Active Directory ».
+# On dit donc à TOUTES les cmdlets *-AD* de ce script d'interroger le DC local :
+$PSDefaultParameterValues['*-AD*:Server'] = $env:COMPUTERNAME
+# Pas de lecteur « AD: » automatique (il cherche lui aussi un DC par défaut et affiche un avertissement).
+$env:ADPS_LoadDefaultDrive = 0
 Import-Module ActiveDirectory
 
 if ($CsvPath) { $Comptes = Import-Csv -Path $CsvPath -Delimiter ';' -Encoding UTF8 }

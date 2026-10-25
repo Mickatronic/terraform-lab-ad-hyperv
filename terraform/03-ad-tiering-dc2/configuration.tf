@@ -22,7 +22,9 @@ resource "terraform_data" "dc01" {
   ]
 
   provisioner "local-exec" {
-    interpreter = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+    # -NonInteractive : si quelque chose demande une saisie (identifiants...), le script échoue
+    # avec un message d'erreur au lieu d'ouvrir une fenêtre et de bloquer Terraform.
+    interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
     command = join(" ", [
       "& '${abspath(path.module)}/scripts/configure-dc01.ps1'",
       "-VMName '${local.vm_names["DC01"]}' -ComputerName 'DC01'",
@@ -30,7 +32,7 @@ resource "terraform_data" "dc01" {
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",
     ])
     environment = {
-      LAB_ADMIN_PASSWORD = var.admin_password
+      LAB_ADMIN_PASSWORD = nonsensitive(var.admin_password)
     }
   }
 }
@@ -50,7 +52,9 @@ resource "terraform_data" "dc02" {
   ]
 
   provisioner "local-exec" {
-    interpreter = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+    # -NonInteractive : si quelque chose demande une saisie (identifiants...), le script échoue
+    # avec un message d'erreur au lieu d'ouvrir une fenêtre et de bloquer Terraform.
+    interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
     command = join(" ", [
       "& '${abspath(path.module)}/scripts/configure-dc02.ps1'",
       "-VMName '${local.vm_names["DC02"]}' -ComputerName 'DC02'",
@@ -59,7 +63,7 @@ resource "terraform_data" "dc02" {
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",
     ])
     environment = {
-      LAB_ADMIN_PASSWORD = var.admin_password
+      LAB_ADMIN_PASSWORD = nonsensitive(var.admin_password)
     }
   }
 }

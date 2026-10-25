@@ -16,9 +16,31 @@
 
 Set-StrictMode -Version Latest
 
+# Une erreur dans une fonction du module doit ARRÊTER le script. Le $ErrorActionPreference du
+# script appelant ne s'applique pas à l'intérieur d'un module : on le fixe donc ici aussi.
+$ErrorActionPreference = 'Stop'
+
+# --- Chemin des modules ---------------------------------------------------------------------
+# Terraform lance « powershell.exe » (Windows PowerShell 5.1). Si TU as lancé Terraform depuis
+# PowerShell 7 (pwsh), la variable PSModulePath héritée pointe d'abord vers les modules de
+# PowerShell 7, que Windows PowerShell 5.1 ne sait pas charger. Erreur typique :
+#   « ConvertTo-SecureString ... module Microsoft.PowerShell.Security n'a pas pu être chargé »
+# On remet donc les dossiers de modules propres à Windows PowerShell 5.1.
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    # Simple concaténation de chaînes : Join-Path vit lui-même dans un module (Management),
+    # qui ne pourrait pas encore être chargé à ce stade.
+    $env:PSModulePath = @(
+        [Environment]::GetFolderPath('MyDocuments') + '\WindowsPowerShell\Modules'
+        $env:ProgramFiles + '\WindowsPowerShell\Modules'
+        $env:SystemRoot + '\System32\WindowsPowerShell\v1.0\Modules'
+    ) -join ';'
+}
+
 function Write-LabEtape {
     # Affiche une étape lisible dans la sortie de « terraform apply ».
-    param([Parameter(Mandatory)][string]$Message)
+    # Les commandes comme repadmin renvoient aussi des lignes vides : on les accepte et on les ignore.
+    param([Parameter(Mandatory)][AllowEmptyString()][AllowNull()][string]$Message)
+    if ([string]::IsNullOrWhiteSpace($Message)) { return }
     Write-Host ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $Message)
 }
 
@@ -32,6 +54,7 @@ function New-LabCredential {
         [Parameter(Mandatory)][string]$UserName,
         [Parameter(Mandatory)][string]$Password
     )
+    if (-not $Password) { throw "Mot de passe vide pour $UserName." }
     $secure = ConvertTo-SecureString $Password -AsPlainText -Force
     New-Object System.Management.Automation.PSCredential ($UserName, $secure)
 }
@@ -56,20 +79,17 @@ function Wait-LabVM {
       Juste après le déploiement, l'image « sysprepée » passe par les phases specialize
       puis OOBE (avec un redémarrage) : il faut plusieurs minutes avant que le compte
       Administrateur soit utilisable. On réessaie donc toutes les 10 secondes.
-      Si -NotBootedAt est fourni, on attend en plus un démarrage PLUS RÉCENT que cette heure
-      (utile après un redémarrage, pour ne pas parler à la VM « avant » qu'elle ne s'éteigne).
     #>
     param(
         [Parameter(Mandatory)][string]$VMName,
         [Parameter(Mandatory)][pscredential]$Credential,
-        [Nullable[datetime]]$NotBootedAt = $null,
         [int]$TimeoutMinutes = 30
     )
     $limite = (Get-Date).AddMinutes($TimeoutMinutes)
     Write-LabEtape "Attente de $VMName (PowerShell Direct, compte $($Credential.UserName))..."
     while ((Get-Date) -lt $limite) {
         $boot = Get-LabBootTime -VMName $VMName -Credential $Credential
-        if ($boot -and ((-not $NotBootedAt) -or ($boot -gt $NotBootedAt))) {
+        if ($boot) {
             Write-LabEtape "$VMName répond (démarrée à $boot)."
             return $boot
         }
@@ -80,22 +100,31 @@ function Wait-LabVM {
 
 function Restart-LabVM {
     <#
-      Redémarre proprement l'invité puis attend son retour.
-      -CredentialAfter : compte à utiliser APRÈS le redémarrage. Exemple : après la promotion
-      en contrôleur de domaine, les comptes locaux n'existent plus, il faut LAB\Administrateur.
+      Redémarre l'invité puis attend son retour.
+      Le redémarrage est demandé à Hyper-V (Stop-VM puis Start-VM), pas à Windows :
+        - Stop-VM sans -TurnOff est un arrêt PROPRE (service d'intégration « Arrêt »),
+          comme un clic sur « Arrêter » dans le Gestionnaire Hyper-V ;
+        - il ne demande AUCUN identifiant. C'est important juste après une promotion en DC :
+          le compte local n'existe plus, et le compte du domaine ne marche qu'après redémarrage.
+      -CredentialAfter : compte à utiliser APRÈS le redémarrage (ex. LAB\Administrateur).
     #>
     param(
         [Parameter(Mandatory)][string]$VMName,
         [Parameter(Mandatory)][pscredential]$Credential,
         [pscredential]$CredentialAfter
     )
-    if (-not $CredentialAfter) { $CredentialAfter = $Credential }
-    $avant = Get-LabBootTime -VMName $VMName -Credential $Credential
-    Write-LabEtape "Redémarrage de $VMName..."
-    # shutdown /t 5 : on laisse 5 s à la session PowerShell Direct pour se fermer proprement.
-    Invoke-Command -VMName $VMName -Credential $Credential -ScriptBlock { shutdown.exe /r /t 5 /f } | Out-Null
-    Start-Sleep -Seconds 15
-    Wait-LabVM -VMName $VMName -Credential $CredentialAfter -NotBootedAt $avant | Out-Null
+    # Sous Windows PowerShell 5.1, un paramètre [pscredential] non fourni vaut [pscredential]::Empty
+    # (et non $null) : le tester avec « -not » ne suffit pas, et passer Empty à Invoke-Command
+    # ouvre une fenêtre « Demande d'informations d'identification ». On regarde donc s'il a été fourni.
+    if (-not $PSBoundParameters.ContainsKey('CredentialAfter') -or
+        $CredentialAfter -eq [System.Management.Automation.PSCredential]::Empty) {
+        $CredentialAfter = $Credential
+    }
+    Write-LabEtape "Redémarrage de $VMName (arrêt propre par Hyper-V)..."
+    # -Force : pas de question de confirmation (le script tourne sans console interactive).
+    Stop-VM -Name $VMName -Force
+    Start-VM -Name $VMName
+    Wait-LabVM -VMName $VMName -Credential $CredentialAfter | Out-Null
 }
 
 function Set-LabBaseConfig {

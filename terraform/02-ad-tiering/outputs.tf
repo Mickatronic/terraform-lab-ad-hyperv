@@ -1,6 +1,10 @@
-output "vms" {
-  description = "VMs créées : nom Hyper-V et adresse IP"
-  value       = { for k, v in var.vms : k => { vm_hyperv = local.vm_names[k], ip = v.ip } }
+output "vm" {
+  description = "Nom de la VM dans Hyper-V et dans Windows"
+  value       = "${var.vm_name} (Windows : ${var.computer_name})"
+}
+
+output "ip" {
+  value = var.ip_address
 }
 
 output "domaine" {
@@ -8,8 +12,8 @@ output "domaine" {
 }
 
 output "connexion" {
-  description = "Pour ouvrir une session sur un DC depuis l'hôte (PowerShell administrateur)"
-  value       = { for k, v in var.vms : k => "Enter-PSSession -VMName ${local.vm_names[k]} -Credential ${var.netbios_name}\\${var.admin_user}" }
+  description = "Pour ouvrir une session sur le DC depuis l'hôte (PowerShell administrateur)"
+  value       = "Enter-PSSession -VMName ${var.vm_name} -Credential ${var.netbios_name}\\${var.admin_user}"
 }
 
 output "verification" {
