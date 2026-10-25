@@ -40,4 +40,6 @@ Invoke-Command -VMName $VMName -Credential $credLocal -ScriptBlock {
     "Adresse  : $ip"
 } | ForEach-Object { Write-LabEtape $_ }
 
+if ($Gateway) { Test-LabInternet -VMName $VMName -Credential $credLocal }
+
 Write-LabEtape "Serveur $ComputerName prêt."

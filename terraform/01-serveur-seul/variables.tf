@@ -51,6 +51,26 @@ variable "prefix_length" {
   default = 24
 }
 
+# --- Accès Internet (NAT sur l'hôte) -----------------------------------------------------
+
+variable "gateway_ip" {
+  type        = string
+  description = "Adresse de l'hôte sur le switch interne = passerelle des VMs"
+  default     = "192.168.101.1"
+}
+
+variable "nat_prefix" {
+  type        = string
+  description = "Plage traduite par le NAT de l'hôte (une seule règle NAT pour toutes les variantes)"
+  default     = "192.168.96.0/19"
+}
+
+variable "dns_forwarders" {
+  type        = list(string)
+  description = "DNS publics utilisés pour les noms Internet (à remplacer par le DNS de votre box ou de l'établissement si besoin)"
+  default     = ["1.1.1.1", "8.8.8.8"]
+}
+
 # --- La VM de cette variante ----------------------------------------------------------
 # Une seule VM : une variable par réglage, sans map ni boucle.
 # (La variante 03, avec deux VMs, montre la version « en boucle » avec for_each.)

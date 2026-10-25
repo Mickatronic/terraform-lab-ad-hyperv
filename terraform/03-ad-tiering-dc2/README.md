@@ -110,3 +110,21 @@ Test de réplication en direct : créez un utilisateur sur DC01, puis cherchez-l
 - **Simuler une panne** : éteindre DC01 (`Stop-VM L03-DC01`) et vérifier qu'on s'authentifie toujours.
 - Créer un **deuxième site AD** (`New-ADReplicationSite`) et y placer DC02.
 - Rétrograder DC02 (`Uninstall-ADDSDomainController`) et observer le nettoyage des métadonnées.
+
+## Accès Internet des VMs (NAT sur l'hôte)
+
+Le switch est **interne** : seul, il ne relie les VMs qu'à l'hôte. Pour leur donner Internet,
+`terraform_data.nat` lance `scripts/New-LabNat.ps1` sur l'hôte, qui :
+
+1. donne à la carte `vEthernet (<switch>)` de l'hôte l'adresse `.1` du sous-réseau : c'est la **passerelle** des VMs ;
+2. crée (une seule fois) la règle NAT `LAB-NAT` sur `192.168.96.0/19`, qui couvre toutes les variantes.
+   Windows 10/11 n'accepte qu'une règle NAT : elle est partagée et n'est pas supprimée au `destroy`.
+
+Côté VM, le script de configuration ajoute la route par défaut vers cette passerelle. Sur un DC, le DNS
+de la machine reste lui-même (il connaît `lab.local`) et les noms Internet sont demandés à des
+**redirecteurs** (`dns_forwarders`, par défaut 1.1.1.1 et 8.8.8.8, à remplacer par le DNS de
+l'établissement si les DNS publics sont filtrés). Le bilan final affiche un test DNS + HTTPS.
+
+Vérifier côté hôte : `Get-NetNat` et `Get-NetIPAddress -InterfaceAlias 'vEthernet (*'`.
+Si `New-NetNat` échoue, un autre NAT existe déjà sur une plage qui chevauche : `Get-NetNat` le montre
+(on peut le supprimer avec `Remove-NetNat` s'il ne sert plus).

@@ -10,9 +10,29 @@
 # script change : c'est pour cela que les scripts sont écrits pour être relançables.
 # =============================================================================
 
+# --- 0. Accès Internet : passerelle sur l'hôte + NAT (voir scripts/New-LabNat.ps1) -----------
+
+resource "terraform_data" "nat" {
+  triggers_replace = [
+    hyperv_network_switch.lab.id,
+    filesha1("${path.module}/scripts/New-LabNat.ps1"),
+  ]
+
+  provisioner "local-exec" {
+    interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
+    command = join(" ", [
+      "& '${abspath(path.module)}/scripts/New-LabNat.ps1'",
+      "-SwitchName '${hyperv_network_switch.lab.name}' -GatewayIP '${var.gateway_ip}'",
+      "-PrefixLength ${var.prefix_length} -NatPrefix '${var.nat_prefix}'",
+    ])
+  }
+}
+
 # --- 1. DC01 : nouvelle forêt + modèle de tiering (identique à la variante 02) -----------
 
 resource "terraform_data" "dc01" {
+  depends_on = [terraform_data.nat]
+
   triggers_replace = [
     hyperv_machine_instance.vm["DC01"].id,
     filesha1("${path.module}/scripts/configure-dc01.ps1"),
@@ -30,6 +50,7 @@ resource "terraform_data" "dc01" {
       "-VMName '${local.vm_names["DC01"]}' -ComputerName 'DC01'",
       "-IPAddress '${var.vms["DC01"].ip}' -PrefixLength ${var.prefix_length}",
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",
+      "-Gateway '${var.gateway_ip}' -DnsForwarders ${join(",", formatlist("'%s'", var.dns_forwarders))}",
     ])
     environment = {
       LAB_ADMIN_PASSWORD = nonsensitive(var.admin_password)
@@ -61,6 +82,7 @@ resource "terraform_data" "dc02" {
       "-IPAddress '${var.vms["DC02"].ip}' -PrefixLength ${var.prefix_length}",
       "-PartnerVMName '${local.vm_names["DC01"]}' -PartnerIPAddress '${var.vms["DC01"].ip}'",
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",
+      "-Gateway '${var.gateway_ip}' -DnsForwarders ${join(",", formatlist("'%s'", var.dns_forwarders))}",
     ])
     environment = {
       LAB_ADMIN_PASSWORD = nonsensitive(var.admin_password)

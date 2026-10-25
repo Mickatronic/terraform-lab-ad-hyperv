@@ -158,9 +158,7 @@ function Set-LabBaseConfig {
             Set-NetIPInterface -InterfaceIndex $nic.ifIndex -Dhcp Disabled
             Get-NetIPAddress -InterfaceIndex $nic.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
                 Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
-            $p = @{ InterfaceIndex = $nic.ifIndex; IPAddress = $ip; PrefixLength = $prefix }
-            if ($gw) { $p.DefaultGateway = $gw }
-            New-NetIPAddress @p | Out-Null
+            New-NetIPAddress -InterfaceIndex $nic.ifIndex -IPAddress $ip -PrefixLength $prefix | Out-Null
         }
         if ($dns) { Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex -ServerAddresses $dns }
         else      { Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex -ResetServerAddresses }
@@ -168,6 +166,7 @@ function Set-LabBaseConfig {
         # c'est plus fiable sur un Windows en français.
         Get-NetFirewallRule -Name 'FPS-ICMP4-ERQ-In*' | Enable-NetFirewallRule
     }
+    if ($Gateway) { Set-LabGateway -VMName $VMName -Credential $Credential -Gateway $Gateway }
 
     $nomActuel = Invoke-Command -VMName $VMName -Credential $Credential -ScriptBlock { $env:COMPUTERNAME }
     if ($nomActuel -ne $ComputerName) {
@@ -180,6 +179,61 @@ function Set-LabBaseConfig {
     else {
         Write-LabEtape "$VMName s'appelle déjà $ComputerName."
     }
+}
+
+function Set-LabGateway {
+    <#
+      Passerelle par défaut de la VM = adresse de l'hôte sur le switch (voir New-LabNat.ps1).
+      C'est elle qui donne Internet à la VM, à travers le NAT de l'hôte. Idempotente.
+      Bonus : avec une passerelle, Windows identifie mieux le réseau (profil « Domaine » sur un DC).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$VMName,
+        [Parameter(Mandatory)][pscredential]$Credential,
+        [Parameter(Mandatory)][string]$Gateway
+    )
+    Invoke-Command -VMName $VMName -Credential $Credential -ArgumentList $Gateway -ScriptBlock {
+        param($gw)
+        $nic = Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -First 1
+        # Route par défaut = 0.0.0.0/0 (« tout le reste ») vers la passerelle.
+        $route = Get-NetRoute -InterfaceIndex $nic.ifIndex -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue
+        if ($route.NextHop -ne $gw) {
+            $route | Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue
+            New-NetRoute -InterfaceIndex $nic.ifIndex -DestinationPrefix '0.0.0.0/0' -NextHop $gw | Out-Null
+        }
+        "$env:COMPUTERNAME : passerelle $gw"
+    } | ForEach-Object { Write-LabEtape $_ }
+}
+
+function Set-LabDnsForwarder {
+    <#
+      Sur un DC, le DNS de la machine reste le DC lui-même (127.0.0.1) : c'est lui qui connaît lab.local.
+      Pour les noms Internet (microsoft.com...), le service DNS du DC les demande à des
+      « redirecteurs » : ici des DNS publics, joints à travers le NAT de l'hôte.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$VMName,
+        [Parameter(Mandatory)][pscredential]$Credential,
+        [Parameter(Mandatory)][string[]]$Forwarders
+    )
+    Invoke-Command -VMName $VMName -Credential $Credential -ArgumentList (, $Forwarders) -ScriptBlock {
+        param($fwd)
+        Set-DnsServerForwarder -IPAddress $fwd
+        "$env:COMPUTERNAME : redirecteurs DNS $($fwd -join ', ')"
+    } | ForEach-Object { Write-LabEtape $_ }
+}
+
+function Test-LabInternet {
+    # Petit test de sortie Internet depuis la VM, pour le bilan (n'arrête pas le script).
+    param(
+        [Parameter(Mandatory)][string]$VMName,
+        [Parameter(Mandatory)][pscredential]$Credential
+    )
+    Invoke-Command -VMName $VMName -Credential $Credential -ScriptBlock {
+        $dns = [bool](Resolve-DnsName www.microsoft.com -ErrorAction SilentlyContinue)
+        $web = (Test-NetConnection www.microsoft.com -Port 443 -WarningAction SilentlyContinue).TcpTestSucceeded
+        "$env:COMPUTERNAME : Internet -> résolution DNS $(if ($dns) {'OK'} else {'ÉCHEC'}), HTTPS $(if ($web) {'OK'} else {'ÉCHEC'})"
+    } | ForEach-Object { Write-LabEtape $_ }
 }
 
 function Wait-LabADReady {
@@ -208,4 +262,4 @@ function Wait-LabADReady {
     throw "Active Directory ne répond pas sur $VMName après $TimeoutMinutes minutes."
 }
 
-Export-ModuleMember -Function Write-LabEtape, New-LabCredential, Get-LabBootTime, Wait-LabVM, Restart-LabVM, Set-LabBaseConfig, Wait-LabADReady
+Export-ModuleMember -Function Write-LabEtape, New-LabCredential, Get-LabBootTime, Wait-LabVM, Restart-LabVM, Set-LabBaseConfig, Set-LabGateway, Set-LabDnsForwarder, Test-LabInternet, Wait-LabADReady

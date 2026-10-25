@@ -15,13 +15,19 @@ function Attendre($cred, $test = { $true }) {
     } until ($ok)
 }
 
+"NAT sur l'hôte (accès Internet des VMs)..."
+New-NetIPAddress -InterfaceAlias 'vEthernet (L04-Internal)' -IPAddress 192.168.104.1 -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null
+if (-not (Get-NetNat -ErrorAction SilentlyContinue | Where-Object InternalIPInterfaceAddressPrefix -eq '192.168.96.0/19')) {
+    New-NetNat -Name LAB-NAT -InternalIPInterfaceAddressPrefix 192.168.96.0/19 | Out-Null
+}
+
 "Attente de la VM..."
 Attendre $local
 
 "IP, nom, redémarrage..."
 Invoke-Command -VMName $vm -Credential $local -ScriptBlock {
     $nic = (Get-NetAdapter)[0]
-    New-NetIPAddress -InterfaceIndex $nic.ifIndex -IPAddress 192.168.104.10 -PrefixLength 24 | Out-Null
+    New-NetIPAddress -InterfaceIndex $nic.ifIndex -IPAddress 192.168.104.10 -PrefixLength 24 -DefaultGateway 192.168.104.1 | Out-Null
     Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex -ServerAddresses 127.0.0.1
     Rename-Computer -NewName DC01 -Force -WarningAction SilentlyContinue
 }
@@ -41,6 +47,7 @@ Attendre $domaine { Get-ADDomain -Server localhost }
 "Tiering : OU, groupes, comptes..."
 Invoke-Command -VMName $vm -Credential $domaine -ArgumentList $mdp -ScriptBlock {
     param($mdp)
+    Set-DnsServerForwarder -IPAddress 1.1.1.1, 8.8.8.8
     $PSDefaultParameterValues['*-AD*:Server'] = 'localhost'
     $racine = 'DC=lab,DC=local'
     $secu = ConvertTo-SecureString $mdp -AsPlainText -Force

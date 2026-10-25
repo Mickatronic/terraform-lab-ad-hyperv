@@ -25,6 +25,8 @@ param(
     [string]$DomainName = 'lab.local',
     [string]$NetbiosName = 'LAB',
     [string]$AdminUser = 'Administrateur',
+    [string]$Gateway = '',                 # IP de l'hôte sur le switch (accès Internet par NAT)
+    [string[]]$DnsForwarders = @(),        # DNS publics vers lesquels le DC redirige les noms Internet
     [switch]$SkipTiering
 )
 $ErrorActionPreference = 'Stop'
@@ -54,7 +56,7 @@ if (-not $dejaDC) {
     # --- 1. Configuration de base -------------------------------------------------------
     # Un DC est son propre serveur DNS : on pointe donc le DNS sur 127.0.0.1.
     Set-LabBaseConfig -VMName $VMName -Credential $credLocal -ComputerName $ComputerName `
-        -IPAddress $IPAddress -PrefixLength $PrefixLength -DnsServers '127.0.0.1'
+        -IPAddress $IPAddress -PrefixLength $PrefixLength -Gateway $Gateway -DnsServers '127.0.0.1'
 
     # --- 2 et 3. Rôle AD DS puis création de la forêt -------------------------------------
     Write-LabEtape "Installation du rôle AD DS et création de la forêt $DomainName (plusieurs minutes)..."
@@ -90,6 +92,10 @@ else {
 
 Wait-LabADReady -VMName $VMName -Credential $credDomaine
 
+# --- Accès Internet (refait à chaque passage : idempotent, et utile pour un DC déjà promu) ----
+if ($Gateway)       { Set-LabGateway -VMName $VMName -Credential $credDomaine -Gateway $Gateway }
+if ($DnsForwarders) { Set-LabDnsForwarder -VMName $VMName -Credential $credDomaine -Forwarders $DnsForwarders }
+
 # --- 5. Modèle de tiering -----------------------------------------------------------------
 if (-not $SkipTiering) {
     # Le CSV est lu ICI, sur l'hôte, et ses lignes sont envoyées au script qui tourne dans la VM :
@@ -101,5 +107,7 @@ if (-not $SkipTiering) {
         -ArgumentList $comptes, $motDePasse |
         ForEach-Object { Write-LabEtape $_ }
 }
+
+if ($Gateway) { Test-LabInternet -VMName $VMName -Credential $credDomaine }
 
 Write-LabEtape "Contrôleur de domaine $ComputerName ($DomainName) prêt."

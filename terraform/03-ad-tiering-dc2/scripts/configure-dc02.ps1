@@ -27,7 +27,9 @@ param(
     [int]$PrefixLength = 24,
     [string]$DomainName = 'lab.local',
     [string]$NetbiosName = 'LAB',
-    [string]$AdminUser = 'Administrateur'
+    [string]$AdminUser = 'Administrateur',
+    [string]$Gateway = '',                 # IP de l'hôte sur le switch (accès Internet par NAT)
+    [string[]]$DnsForwarders = @()         # DNS publics vers lesquels le DC redirige les noms Internet
 )
 $ErrorActionPreference = 'Stop'
 # Chemin écrit sans Join-Path : LabHelpers doit être chargé avant tout autre module (voir son en-tête).
@@ -50,7 +52,7 @@ if ($role -lt 3) {
     # Le DNS du serveur DOIT être un DC du domaine : c'est par le DNS (enregistrements SRV)
     # que Windows trouve un contrôleur de domaine pour la jonction.
     Set-LabBaseConfig -VMName $VMName -Credential $credLocal -ComputerName $ComputerName `
-        -IPAddress $IPAddress -PrefixLength $PrefixLength -DnsServers $PartnerIPAddress
+        -IPAddress $IPAddress -PrefixLength $PrefixLength -Gateway $Gateway -DnsServers $PartnerIPAddress
 
     # --- DC01 est-il joignable ? Profil réseau ---------------------------------------------
     # Le switch interne n'a pas de passerelle : au démarrage, le service « Connaissance des
@@ -139,6 +141,10 @@ else {
 
 Wait-LabADReady -VMName $VMName -Credential $credDomaine
 
+# --- Accès Internet : les redirecteurs DNS ne sont PAS répliqués entre DC, on les pose sur DC02 aussi.
+if ($Gateway)       { Set-LabGateway -VMName $VMName -Credential $credDomaine -Gateway $Gateway }
+if ($DnsForwarders) { Set-LabDnsForwarder -VMName $VMName -Credential $credDomaine -Forwarders $DnsForwarders }
+
 # --- 5. DNS croisé ------------------------------------------------------------------------------
 # Bonne pratique avec deux DC : DNS préféré = l'AUTRE DC, DNS auxiliaire = soi-même (127.0.0.1).
 # Si un DC redémarre seul, il trouve tout de suite son partenaire ; s'il est seul, il se trouve lui-même.
@@ -168,5 +174,7 @@ Invoke-Command -VMName $VMName -Credential $credDomaine -ScriptBlock {
     "OU 'Tier *' visibles sur $env:COMPUTERNAME : $ou"
     repadmin /replsummary
 } | ForEach-Object { Write-LabEtape $_ }
+
+if ($Gateway) { Test-LabInternet -VMName $VMName -Credential $credDomaine }
 
 Write-LabEtape "Contrôleur de domaine supplémentaire $ComputerName prêt."

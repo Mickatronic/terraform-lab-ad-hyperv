@@ -10,7 +10,27 @@
 # script change : c'est pour cela que les scripts sont écrits pour être relançables.
 # =============================================================================
 
+# --- 0. Accès Internet : passerelle sur l'hôte + NAT (voir scripts/New-LabNat.ps1) -----------
+
+resource "terraform_data" "nat" {
+  triggers_replace = [
+    hyperv_network_switch.lab.id,
+    filesha1("${path.module}/scripts/New-LabNat.ps1"),
+  ]
+
+  provisioner "local-exec" {
+    interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
+    command = join(" ", [
+      "& '${abspath(path.module)}/scripts/New-LabNat.ps1'",
+      "-SwitchName '${hyperv_network_switch.lab.name}' -GatewayIP '${var.gateway_ip}'",
+      "-PrefixLength ${var.prefix_length} -NatPrefix '${var.nat_prefix}'",
+    ])
+  }
+}
+
 resource "terraform_data" "configuration" {
+  depends_on = [terraform_data.nat]
+
   triggers_replace = [
     hyperv_machine_instance.vm.id,
     filesha1("${path.module}/scripts/configure-serveur.ps1"),
@@ -26,6 +46,7 @@ resource "terraform_data" "configuration" {
       "-VMName '${var.vm_name}' -ComputerName '${var.computer_name}'",
       "-IPAddress '${var.ip_address}' -PrefixLength ${var.prefix_length}",
       "-AdminUser '${var.admin_user}'",
+      "-Gateway '${var.gateway_ip}' -DnsServers ${join(",", formatlist("'%s'", var.dns_forwarders))}",
     ])
 
     # Le mot de passe passe par une variable d'environnement : il n'apparaît pas dans la ligne

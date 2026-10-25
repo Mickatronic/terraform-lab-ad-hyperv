@@ -1,0 +1,137 @@
+# --- Accès à l'hôte Hyper-V (provider) ----------------------------------------
+
+variable "host_user" {
+  type        = string
+  description = "Compte Windows local administrateur de l'hôte (pour WinRM)"
+}
+
+variable "host_password" {
+  type      = string
+  sensitive = true
+}
+
+# --- Image et emplacement des VMs ----------------------------------------------
+
+variable "golden_image_vhdx" {
+  type        = string
+  description = "VHDX Server Core ANGLAIS produit par Packer (packer\\windows-server-2025-core-en)"
+  default     = "C:\\VMS\\images\\ws2025-en\\Virtual Hard Disks\\ws2025-en-golden.vhdx"
+}
+
+variable "vm_root_path" {
+  type        = string
+  description = "Dossier où seront stockés les VMs et leurs disques"
+  default     = "C:\\VMS\\vms\\05-ad-en"
+}
+
+variable "switch_name" {
+  type    = string
+  default = "L05-Internal"
+}
+
+# --- Compte Administrateur des VMs ---------------------------------------------
+
+variable "admin_user" {
+  type        = string
+  description = "Compte local de l'image (Windows anglais : « Administrator »)"
+  default     = "Administrator"
+}
+
+variable "admin_password" {
+  type        = string
+  description = "Mot de passe défini par sysprep-unattend.xml dans l'image Packer (LAB uniquement)"
+  sensitive   = true
+  default     = "P@ssw0rd!"
+}
+
+# --- Réseau du LAB ---------------------------------------------------------------
+
+variable "prefix_length" {
+  type    = number
+  default = 24
+}
+
+# --- Accès Internet (NAT sur l'hôte) -----------------------------------------------------
+
+variable "gateway_ip" {
+  type        = string
+  description = "Adresse de l'hôte sur le switch interne = passerelle des VMs"
+  default     = "192.168.105.1"
+}
+
+variable "nat_prefix" {
+  type        = string
+  description = "Plage traduite par le NAT de l'hôte (une seule règle NAT pour toutes les variantes)"
+  default     = "192.168.96.0/19"
+}
+
+variable "dns_forwarders" {
+  type        = list(string)
+  description = "DNS publics utilisés pour les noms Internet (à remplacer par le DNS de votre box ou de l'établissement si besoin)"
+  default     = ["1.1.1.1", "8.8.8.8"]
+}
+
+# --- Domaine Active Directory --------------------------------------------------------
+
+variable "domain_name" {
+  type        = string
+  description = "Nom DNS du domaine (racine de la forêt)"
+  default     = "lab.local"
+}
+
+variable "netbios_name" {
+  type        = string
+  description = "Nom NetBIOS du domaine (le « LAB » de LAB\\Administrator)"
+  default     = "LAB"
+}
+
+# --- La VM de cette variante ----------------------------------------------------------
+# Une seule VM : une variable par réglage, sans map ni boucle.
+# (La variante 03, avec deux VMs, montre la version « en boucle » avec for_each.)
+
+variable "vm_name" {
+  type        = string
+  description = "Nom de la VM dans Hyper-V (préfixé pour ne pas entrer en collision avec les autres LABs)"
+  default     = "L05-DC01"
+}
+
+variable "computer_name" {
+  type        = string
+  description = "Nom de l'ordinateur dans Windows (15 caractères maximum)"
+  default     = "DC01"
+}
+
+variable "cpus" {
+  type    = number
+  default = 2
+}
+
+# Mémoire DYNAMIQUE (en Mo) : Hyper-V donne « startup » au démarrage, puis ajuste
+# entre « min » et « max » selon les besoins réels de la VM.
+variable "memory_startup_mb" {
+  type    = number
+  default = 1024
+}
+
+variable "memory_min_mb" {
+  type    = number
+  default = 512
+}
+
+variable "memory_max_mb" {
+  type    = number
+  default = 2048
+}
+
+variable "ip_address" {
+  type    = string
+  default = "192.168.105.10"
+}
+
+# --- Tiering -------------------------------------------------------------------------------
+
+variable "create_tiering" {
+  type        = bool
+  description = "Créer aussi NOTRE arborescence de tiering (New-LabTiering.ps1). Désactivé par défaut pour laisser la place au script de tiering Microsoft."
+  default     = false
+}

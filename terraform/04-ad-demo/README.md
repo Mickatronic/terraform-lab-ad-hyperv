@@ -22,6 +22,7 @@ terraform apply
 ```
 
 VM `L04-DC01`, IP `192.168.104.10`, connexion : `Enter-PSSession -VMName L04-DC01 -Credential LAB\Administrateur`.
+Accès Internet par le NAT de l'hôte (passerelle 192.168.104.1, redirecteurs DNS 1.1.1.1 et 8.8.8.8).
 
 ## Ce qu'on a sacrifié par rapport à la 02
 
