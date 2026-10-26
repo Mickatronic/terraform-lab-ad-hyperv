@@ -1,6 +1,6 @@
 # Variantes Terraform du LAB (images Server Core)
 
-Trois dossiers indépendants, du plus simple au plus complet. Chacun est un projet Terraform
+Dossiers indépendants, du plus simple au plus complet. Chacun est un projet Terraform
 autonome (son état, ses VMs préfixées, son switch, son sous-réseau) : on peut les étudier dans l'ordre.
 Le dossier `terraform\` d'origine (DC01 + SRV01, configuration manuelle) n'est pas modifié.
 
@@ -11,8 +11,9 @@ Le dossier `terraform\` d'origine (DC01 + SRV01, configuration manuelle) n'est p
 | `03-ad-tiering-dc2` | 02 + DC02 joint puis promu DC supplémentaire | L03-DC01, L03-DC02 | 192.168.103.0/24 | 2 Go |
 | `04-ad-demo` | La 02 en version démo : un script, tout en dur, non relançable | L04-DC01 | 192.168.104.0/24 | 1 Go |
 | `05-ad-en` | La 02 sur un Windows **anglais** (clavier FR), forêt vierge pour le script de tiering Microsoft | L05-DC01 | 192.168.105.0/24 | 1 Go |
+| `06-unattend-cdrom` | La 01, mais nom et IP posés au 1er démarrage par un Autounattend.xml sur CD (image **sans unattend**, voir son README) | L06-SRV01 | 192.168.106.0/24 | 1 Go |
 
-Prérequis communs (la 05 utilise l'image anglaise `images\ws2025-core-en`, voir son README) :
+Prérequis communs (la 05 utilise l'image anglaise `images\ws2025-core-en`, la 06 l'image `images\ws2025-core-sans-unattend` : voir leur README) :
 - l'image `C:\VMS\images\ws2025-core\Virtual Hard Disks\ws2025-core-golden.vhdx` (`scripts\01-build-image-core.ps1`) ;
 - une console PowerShell **administrateur** (PowerShell Direct) ;
 - `terraform.tfvars` dans chaque dossier (déjà copié depuis `terraform\terraform.tfvars`).

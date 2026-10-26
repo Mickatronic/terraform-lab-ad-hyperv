@@ -1,0 +1,7 @@
+# Propres à chaque poste : providers téléchargés, état et plan (contiennent des secrets).
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+# Zip intermédiaire de l'Autounattend.xml (contient le mot de passe en clair).
+build/

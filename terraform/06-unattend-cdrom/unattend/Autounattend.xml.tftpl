@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MODÈLE Terraform (templatefile, voir main.tf) : les $${nom} sont remplacés pour chaque VM.
+  Fichier de réponse lu au 1er démarrage d'un clone de l'image « sans unattend » :
+  Windows ne trouve rien dans C:\Windows\Panther, il cherche donc Autounattend.xml à la racine du CD.
+  Seules les passes d'après sysprep sont décrites : specialize puis oobeSystem.
+  LAB : le mot de passe est en clair sur le CD.
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+
+  <settings pass="specialize">
+    <!-- Nom définitif dès le 1er démarrage : plus de Rename-Computer ni de redémarrage. -->
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <ComputerName>${computer_name}</ComputerName>
+      <TimeZone>${time_zone}</TimeZone>
+    </component>
+
+    <!-- IP fixe et passerelle. La carte est désignée par son adresse MAC (fixée dans main.tf). -->
+    <component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <Interfaces>
+        <Interface wcm:action="add">
+          <Identifier>${mac_address}</Identifier>
+          <Ipv4Settings>
+            <DhcpEnabled>false</DhcpEnabled>
+          </Ipv4Settings>
+          <UnicastIpAddresses>
+            <IpAddress wcm:action="add" wcm:keyValue="1">${ip_address}/${prefix_length}</IpAddress>
+          </UnicastIpAddresses>
+          <Routes>
+            <Route wcm:action="add">
+              <Identifier>0</Identifier>
+              <Prefix>0.0.0.0/0</Prefix>
+              <NextHopAddress>${gateway_ip}</NextHopAddress>
+              <Metric>10</Metric>
+            </Route>
+          </Routes>
+        </Interface>
+      </Interfaces>
+    </component>
+
+    <!-- Serveurs DNS de la même carte. -->
+    <component name="Microsoft-Windows-DNS-Client" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <Interfaces>
+        <Interface wcm:action="add">
+          <Identifier>${mac_address}</Identifier>
+          <DNSServerSearchOrder>
+%{ for i, dns in dns_servers ~}
+            <IpAddress wcm:action="add" wcm:keyValue="${i + 1}">${dns}</IpAddress>
+%{ endfor ~}
+          </DNSServerSearchOrder>
+        </Interface>
+      </Interfaces>
+    </component>
+  </settings>
+
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>040c:0000040c</InputLocale>
+      <SystemLocale>fr-FR</SystemLocale>
+      <UILanguage>fr-FR</UILanguage>
+      <UserLocale>fr-FR</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <ProtectYourPC>3</ProtectYourPC>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <SkipUserOOBE>true</SkipUserOOBE>
+      </OOBE>
+
+      <UserAccounts>
+        <AdministratorPassword>
+          <Value>${admin_password}</Value>
+          <PlainText>true</PlainText>
+        </AdministratorPassword>
+      </UserAccounts>
+    </component>
+  </settings>
+</unattend>
