@@ -47,7 +47,7 @@ resource "terraform_data" "dc01" {
     interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
     command = join(" ", [
       "& '${abspath(path.module)}/scripts/configure-dc01.ps1'",
-      "-VMName '${local.vm_names["DC01"]}' -ComputerName 'DC01'",
+      "-VMName '${local.vm_names["DC01"]}' -ComputerName '${var.vms["DC01"].name}'",
       "-IPAddress '${var.vms["DC01"].ip}' -PrefixLength ${var.prefix_length}",
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",
       "-Gateway '${var.gateway_ip}' -DnsForwarders ${join(",", formatlist("'%s'", var.dns_forwarders))}",
@@ -78,7 +78,7 @@ resource "terraform_data" "dc02" {
     interpreter = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"]
     command = join(" ", [
       "& '${abspath(path.module)}/scripts/configure-dc02.ps1'",
-      "-VMName '${local.vm_names["DC02"]}' -ComputerName 'DC02'",
+      "-VMName '${local.vm_names["DC02"]}' -ComputerName '${var.vms["DC02"].name}'",
       "-IPAddress '${var.vms["DC02"].ip}' -PrefixLength ${var.prefix_length}",
       "-PartnerVMName '${local.vm_names["DC01"]}' -PartnerIPAddress '${var.vms["DC01"].ip}'",
       "-DomainName '${var.domain_name}' -NetbiosName '${var.netbios_name}' -AdminUser '${var.admin_user}'",

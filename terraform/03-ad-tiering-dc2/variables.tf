@@ -18,18 +18,6 @@ variable "golden_image_vhdx" {
   default     = "C:\\VMS\\images\\ws2025-core\\Virtual Hard Disks\\ws2025-core-golden.vhdx"
 }
 
-variable "vm_root_path" {
-  type        = string
-  description = "Dossier où seront stockés les VMs et leurs disques"
-  default     = "C:\\VMS\\vms\\03-ad-tiering-dc2"
-}
-
-variable "lab_prefix" {
-  type        = string
-  description = "Préfixe des noms de VM dans Hyper-V (le nom Windows, lui, reste sans préfixe)"
-  default     = "L03"
-}
-
 variable "switch_name" {
   type    = string
   default = "L03-Internal"
@@ -92,7 +80,11 @@ variable "netbios_name" {
 }
 
 # --- Les VMs de cette variante ------------------------------------------------------
-# La clé de la map est le nom Windows de la machine.
+# Une ligne par VM ; main.tf crée une VM par entrée de la map grâce à for_each.
+#   id     : nom de la VM dans Hyper-V (préfixé L03- pour ne pas entrer en collision avec les autres LABs)
+#   name   : nom de l'ordinateur dans Windows (15 caractères maximum)
+#   switch : switch Hyper-V auquel la carte réseau est branchée (doit être celui de var.switch_name)
+#   path   : dossier de stockage de la VM et de son disque
 #
 # ATTENTION RAM : l'hôte n'a qu'environ 2,4 Go libres. Deux VMs à 1 Go au démarrage
 # (2 Go en tout) passent tout juste. Si Hyper-V refuse de démarrer DC02
@@ -102,6 +94,10 @@ variable "netbios_name" {
 variable "vms" {
   description = "Définition des VMs du LAB"
   type = map(object({
+    id                = string
+    name              = string
+    switch            = string
+    path              = string
     cpus              = number
     memory_startup_mb = number
     memory_min_mb     = number
@@ -109,7 +105,27 @@ variable "vms" {
     ip                = string
   }))
   default = {
-    DC01 = { cpus = 2, memory_startup_mb = 1024, memory_min_mb = 512, memory_max_mb = 1536, ip = "192.168.103.10" }
-    DC02 = { cpus = 2, memory_startup_mb = 1024, memory_min_mb = 512, memory_max_mb = 1536, ip = "192.168.103.11" }
+    DC01 = {
+      id                = "L03-DC01"
+      name              = "DC01"
+      switch            = "L03-Internal"
+      path              = "C:\\VMS\\vms\\03-ad-tiering-dc2"
+      cpus              = 2
+      memory_startup_mb = 1024
+      memory_min_mb     = 512
+      memory_max_mb     = 1536
+      ip                = "192.168.103.10"
+    }
+    DC02 = {
+      id                = "L03-DC02"
+      name              = "DC02"
+      switch            = "L03-Internal"
+      path              = "C:\\VMS\\vms\\03-ad-tiering-dc2"
+      cpus              = 2
+      memory_startup_mb = 1024
+      memory_min_mb     = 512
+      memory_max_mb     = 1536
+      ip                = "192.168.103.11"
+    }
   }
 }
