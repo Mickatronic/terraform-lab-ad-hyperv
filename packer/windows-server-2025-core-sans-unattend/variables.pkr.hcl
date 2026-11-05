@@ -17,7 +17,7 @@ variable "switch_name" {
 }
 
 variable "vm_name" {
-  type    = string
+  type = string
   # Nom de la VM de build ET du .vhdx produit : distinct de l'image ws2025-core-golden.
   default = "ws2025-core-sans-unattend"
 }

@@ -10,8 +10,9 @@
 $ErrorActionPreference = 'Stop'
 
 Write-Host '== Hyper-V ==' -ForegroundColor Cyan
-$hv = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
+<#$hv = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
 if ($hv.State -ne 'Enabled') { throw 'Hyper-V n''est pas activé.' }
+#>
 Write-Host 'Hyper-V OK'
 
 Write-Host '== Outils ==' -ForegroundColor Cyan

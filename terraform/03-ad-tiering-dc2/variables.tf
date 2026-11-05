@@ -82,7 +82,7 @@ variable "dns_forwarders" {
 variable "domain_name" {
   type        = string
   description = "Nom DNS du domaine (racine de la forêt)"
-  default     = "lab.local"
+  default     = "entreprise.fr"
 }
 
 variable "netbios_name" {

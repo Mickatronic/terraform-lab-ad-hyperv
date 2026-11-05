@@ -1,0 +1,1 @@
+oscdimg -j2 C:\VMS\terraform-lab-ad-hyperv\packer\windows-server-2025-core-sans-unattend-demo2\Demo2\unattend C:\VMS\terraform-lab-ad-hyperv\packer\windows-server-2025-core-sans-unattend-demo2\Demo2\unattend.iso 

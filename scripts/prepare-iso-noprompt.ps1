@@ -9,8 +9,8 @@
   On copie le contenu de l'ISO, puis on regénère un ISO avec oscdimg en utilisant efisys_noprompt.bin.
 #>
 param(
-    [string]$SourceIso = 'C:\ISO\windows2025.iso',
-    [string]$DestIso   = 'C:\VMS\images\windows2025-noprompt.iso',
+    [string]$SourceIso = 'C:\ISO\windows2025-en.iso',
+    [string]$DestIso   = 'C:\VMS\images\windows2025-en-noprompt.iso',
     [string]$WorkDir   = 'C:\VMS\images\iso-work'
 )
 $ErrorActionPreference = 'Stop'

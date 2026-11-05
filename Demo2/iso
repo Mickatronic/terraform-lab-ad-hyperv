@@ -1,0 +1,3 @@
+cd C:\Program Files (x86)\Windows Kits\10\Tools\bin\i386
+
+oscdimg -j2 C:\VMS\terraform-lab-ad-hyperv\Demo2\unattend C:\VMS\terraform-lab-ad-hyperv\Demo2\unattend.iso 

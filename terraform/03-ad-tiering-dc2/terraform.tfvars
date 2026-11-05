@@ -1,2 +1,2 @@
-host_user     = "DESKTOP-F3E23UI\\terraform"
-host_password = "P@ssword59!"
+host_user     = "demo\\terraform"
+host_password = "P@ssword/59"

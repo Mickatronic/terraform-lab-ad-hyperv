@@ -90,7 +90,7 @@ if ($role -lt 3) {
                 $srv = Resolve-DnsName "_ldap._tcp.dc._msdcs.$domaine" -Type SRV -ErrorAction SilentlyContinue
                 "  DNS  : enregistrement SRV des DC $(if ($srv) { 'trouvé' } else { 'ABSENT' })"
                 # nltest /dsgetdc : la recherche de DC exactement comme la fait Windows (DNS + ping LDAP).
-                "  nltest /dsgetdc : " + ((nltest /dsgetdc:$domaine 2>&1 | Select-Object -First 2) -join ' | ')
+                "  nltest /dsgetdc : " + ((cmd /c "nltest /dsgetdc:$domaine 2>&1" | Select-Object -First 2) -join ' | ')
                 foreach ($port in 53, 88, 135, 389, 445) {
                     $ok = (Test-NetConnection $ipDC -Port $port -WarningAction SilentlyContinue).TcpTestSucceeded
                     "  port $port vers $ipDC : $(if ($ok) { 'ouvert' } else { 'FERMÉ' })"

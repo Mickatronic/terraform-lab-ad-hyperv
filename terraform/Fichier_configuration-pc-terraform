@@ -1,0 +1,65 @@
+Création compte local : 
+    
+New-LocalUser -Name "terraform" -Password (ConvertTo-SecureString "P@ssword/59" -AsPlainText -Force)  -PasswordNeverExpires
+
+Add-LocalGroupMember -Group "Administrateurs" -Member "terraform"
+
+
+
+Configurer win rm : 
+    
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+winrm set winrm/config/client '@{AllowUnencrypted="true"}'
+
+winrm set winrm/config/service/auth '@{Basic="true"}'
+winrm set winrm/config/client/auth '@{Basic="true"}'
+
+Enable-PSRemoting -Force
+
+Set-Item WSMan:\localhost\Service\AllowUnencrypted -Value $true
+
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WSMAN\Service"  -Name "allow_unencrypted"  -Value 1 -Type DWord
+
+Set-Item WSMan:\localhost\Service\Auth\Basic -Value $true
+
+
+winrm quickconfig –force
+
+Get-Service WinRM
+
+winrm enumerate winrm/config/listener
+Listener
+    Address = *
+    Transport = HTTP
+    Port = 5985
+    Hostname
+    Enabled = true
+    URLPrefix = wsman
+    CertificateThumbprint
+    ListeningOn = 127.0.0.1, 192.168.1.55,  ….
+    
+    
+    TESTER WINRM : 
+        $cred = Get-Credential
+
+Test-WSMan -ComputerName localhost -Authentication Basic -Credential $cred
+
+Invoke-Command -ComputerName localhost `
+  -Credential $cred `
+  -Authentication Basic `
+  -ScriptBlock { whoami } `
+  -SessionOption (New-PSSessionOption -NoEncryption)
+  
+
+Configurer la connexion réuseau : 
+    
+Get-NetConnectionProfile
+Name                     :  MonReseau (wifi ou ethernet)
+InterfaceAlias           : vEthernet (Test)
+InterfaceIndex           : 26
+NetworkCategory          : Public
+DomainAuthenticationKind : None
+IPv4Connectivity         : Internet
+IPv6Connectivity         : Internet
+
+Set-NetConnectionProfile -InterfaceIndex 26 –NetworkCategory Private

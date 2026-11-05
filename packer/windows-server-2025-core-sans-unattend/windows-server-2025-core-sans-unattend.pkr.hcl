@@ -16,18 +16,18 @@ packer {
 # c'est Terraform qui le fournit (terraform-variantes\06-unattend-cdrom), avec le nom et l'IP de la VM.
 # ATTENTION : un clone démarré SANS ce CD s'arrête sur l'assistant OOBE (pays, clavier, mot de passe).
 source "hyperv-iso" "ws2025core" {
-  vm_name   = var.vm_name
+  vm_name    = var.vm_name
   generation = 2
 
   iso_url      = var.iso_path
   iso_checksum = var.iso_checksum
 
-  cpus                 = var.cpus
-  memory               = var.memory_mb
-  disk_size            = var.disk_size_mb
-  switch_name          = var.switch_name
-  enable_secure_boot   = true
-  secure_boot_template = "MicrosoftWindows"
+  cpus                  = var.cpus
+  memory                = var.memory_mb
+  disk_size             = var.disk_size_mb
+  switch_name           = var.switch_name
+  enable_secure_boot    = true
+  secure_boot_template  = "MicrosoftWindows"
   enable_dynamic_memory = false
 
   # Les fichiers sont gravés dans un CD monté dans la VM (nécessite oscdimg / ADK).
