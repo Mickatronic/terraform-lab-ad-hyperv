@@ -1,0 +1,5 @@
+# Propres à chaque poste : provider téléchargé, état et plan (contiennent des secrets).
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan

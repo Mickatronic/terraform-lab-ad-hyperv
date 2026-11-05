@@ -1,0 +1,15 @@
+﻿Tier;Type;Prenom;Nom;Login;Groupe;Description
+0;Admin;Alice;Martin;t0-amartin;GG_T0_Admins;Administratrice AD (compte Tier 0)
+0;Admin;Bruno;Leroy;t0-bleroy;GG_T0_Admins;Administrateur AD (compte Tier 0)
+0;Service;;;svc-t0-sauvegarde;;Sauvegarde des contrôleurs de domaine
+1;Admin;Alice;Martin;t1-amartin;GG_T1_Admins_Serveurs;Administratrice serveurs (compte Tier 1)
+1;Admin;Chloé;Dubois;t1-cdubois;GG_T1_Admins_Serveurs;Administratrice serveurs (compte Tier 1)
+1;Service;;;svc-t1-sql;;Service SQL Server de SRV-SQL01
+1;Service;;;svc-t1-web;;Pool d'applications IIS
+2;Admin;Chloé;Dubois;t2-cdubois;GG_T2_Admins_Postes;Administratrice postes (compte Tier 2)
+2;Admin;David;Petit;t2-dpetit;GG_T2_Support;Technicien support (compte Tier 2)
+2;Service;;;svc-t2-deploiement;;Déploiement des postes de travail
+2;Utilisateur;Emma;Bernard;ebernard;GG_T2_Utilisateurs;Comptabilité
+2;Utilisateur;Félix;Moreau;fmoreau;GG_T2_Utilisateurs;Ressources humaines
+2;Utilisateur;Gaëlle;Roux;groux;GG_T2_Utilisateurs;Commercial
+2;Utilisateur;Hugo;Fournier;hfournier;GG_T2_Utilisateurs;Commercial

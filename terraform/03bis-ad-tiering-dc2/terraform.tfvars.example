@@ -1,0 +1,7 @@
+# Copier ce fichier en terraform.tfvars puis l'adapter.
+# Compte Windows de l'HÔTE utilisé par le provider Hyper-V (WinRM) : voir scripts\00-prereq-host.ps1.
+host_user     = "NOM-DU-PC\\terraform"
+host_password = "MotDePasseDuCompteTerraform"
+
+# Mot de passe du compte Administrateur des VMs (celui de l'image Packer, sysprep-unattend.xml).
+# admin_password = "P@ssw0rd!"

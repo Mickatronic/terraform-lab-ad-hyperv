@@ -4,17 +4,26 @@
 # =============================================================================
 
 locals {
-  # Nom de la VM dans Hyper-V = préfixe de la variante + nom Windows (ex. L02-DC01).
-  # Le préfixe évite les collisions avec les VMs du dossier terraform\ d'origine (DC01, SRV01)
-  # ou d'une autre variante : chaque variante a ses propres VMs, son switch et son dossier.
-  vm_names = { for k, v in var.vms : k => "${var.lab_prefix}-${k}" }
+  # Nom de chaque VM dans Hyper-V, lu dans le champ « id » de la map var.vms (variables.tf).
+  #
+  # La boucle se lit ligne par ligne :
+  #   for nom_vm, fiche_vm in var.vms :   « pour chaque VM de la map (nom_vm = "DC01", puis "DC02"),
+  #                                          avec sa fiche (fiche_vm = { id = ..., name = ..., ... }) »
+  #   nom_vm => fiche_vm.id               « retenir : la clé de la VM => son id »
+  #
+  # Résultat : vm_names = { DC01 = "L03-DC01", DC02 = "L03-DC02" }
+  # Ailleurs, local.vm_names["DC01"] donne donc "L03-DC01".
+  vm_names = {
+    for nom_vm, fiche_vm in var.vms :
+    nom_vm => fiche_vm.id
+  }
 }
 
 # Switch interne : les VMs se voient entre elles et avec l'hôte, sans accès Internet.
 # Pas de DHCP sur ce switch : les adresses IP sont fixées par les scripts de configuration.
 resource "hyperv_network_switch" "lab" {
   name                                    = var.switch_name
-  notes                                   = "Switch interne ${var.lab_prefix}"
+  notes                                   = "Switch interne du LAB 03"
   allow_management_os                     = true
   enable_embedded_teaming                 = false
   enable_iov                              = false
@@ -29,7 +38,7 @@ resource "hyperv_network_switch" "lab" {
 resource "hyperv_vhd" "os" {
   for_each = var.vms
 
-  path   = "${var.vm_root_path}\\${local.vm_names[each.key]}\\${local.vm_names[each.key]}.vhdx"
+  path   = "${each.value.path}\\${local.vm_names[each.key]}\\${local.vm_names[each.key]}.vhdx"
   source = var.golden_image_vhdx
 }
 
@@ -39,7 +48,7 @@ resource "hyperv_machine_instance" "vm" {
   name            = local.vm_names[each.key]
   generation      = 2
   processor_count = each.value.cpus
-  path            = var.vm_root_path
+  path            = each.value.path
   state           = "Running"
 
   # Mémoire DYNAMIQUE : l'hôte n'a que peu de RAM libre. Hyper-V donne « startup » au démarrage,
@@ -59,9 +68,13 @@ resource "hyperv_machine_instance" "vm" {
     secure_boot_template = "MicrosoftWindows"
   }
 
+  # Le nom du switch vient de la map (une simple chaîne) : Terraform ne voit donc pas de lien
+  # avec la ressource hyperv_network_switch.lab. depends_on lui impose de créer le switch AVANT les VMs.
+  depends_on = [hyperv_network_switch.lab]
+
   network_adaptors {
     name        = "eth0"
-    switch_name = hyperv_network_switch.lab.name
+    switch_name = each.value.switch
   }
 
   hard_disk_drives {

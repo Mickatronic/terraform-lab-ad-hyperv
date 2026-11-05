@@ -9,6 +9,7 @@ Le dossier `terraform\` d'origine (DC01 + SRV01, configuration manuelle) n'est p
 | `01-serveur-seul` | 1 serveur Core configuré (IP, nom) | L01-SRV01 | 192.168.101.0/24 | 1 Go |
 | `02-ad-tiering` | 1 DC, forêt lab.local, OU de tiering alimentées | L02-DC01 | 192.168.102.0/24 | 1 Go |
 | `03-ad-tiering-dc2` | 02 + DC02 joint puis promu DC supplémentaire | L03-DC01, L03-DC02 | 192.168.103.0/24 | 2 Go |
+| `03bis-ad-tiering-dc2` | La 03 **sans boucle** : DC01 et DC02 écrits en entier dans `main.tf` (plus lisible) | L03B-DC01, L03B-DC02 | 192.168.113.0/24 | 2 Go |
 | `04-ad-demo` | La 02 en version démo : un script, tout en dur, non relançable | L04-DC01 | 192.168.104.0/24 | 1 Go |
 | `05-ad-en` | La 02 sur un Windows **anglais** (clavier FR), forêt vierge pour le script de tiering Microsoft | L05-DC01 | 192.168.105.0/24 | 1 Go |
 | `06-unattend-cdrom` | La 01, mais nom et IP posés au 1er démarrage par un Autounattend.xml sur CD (image **sans unattend**, voir son README) | L06-SRV01 | 192.168.106.0/24 | 1 Go |
